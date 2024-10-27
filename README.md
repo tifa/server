@@ -78,4 +78,4 @@ make git
 ```
 
 Then add a Github Actions workflow for deployment. See example at
-[./examples/deploy.yaml].
+[./examples/deploy.yaml](./examples/deploy.yaml).

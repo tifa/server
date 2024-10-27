@@ -1,94 +1,65 @@
-# vps 💾
+# server 💾
 
-## Provision the instance
+Set up a new instance.
 
-Copy the example environment file and modify the `VPS Provisioning` configs.
+
+## One-time bootstrap
+
+Create an SSH key pair and it to the SSH authentication agent.
 
 ```sh
-cp .env.example .env
+ssh-keygen -t ed25519 -C "email@example.com"
+ssh-add ~/.ssh/path/to/key
 ```
 
-#### One-time setup
+Run the interactive setup.
 
 ```sh
 make bootstrap
 ```
 
-- Generate an SSH key pair
-- Create the main user
-- Set up firewall rules
+- Create a new user
+- Change the SSH port
 - Change the root password
 - Disable root login
 
-#### Idempotent provisioning steps
+Add this server to the SSH configs `~/.ssh/config`.
+
+```txt
+Host <HOST>
+  HostName <HOSTNAME>
+  User <USER>
+  Port <PORT>
+  IdentityFile ~/.ssh/path/to/key
+```
+
+
+## Idempotent provisioning steps
 
 ```sh
 make provision
 ```
 
-- Install: virtualenv, Docker, AWS CLI, make
-- Allow 80/TCP connections
+- Install Docker
 
-## Run shared services
 
-Update the `Docker Services` configs in `.env`, where `ENVIRONMENT` can be `dev` (local machine) or `prod`.
+## Development
 
-```sh
-make start
-```
-
-- Create the `tifa` network
-- Run the Traefik reverse proxy
-- Run a MySQL instance
-- Run a phpMyAdmin instance
-
-In the development environment, a certificate is created at `./assets/traefik/certs/dev.crt`. On macOS it is added to the system's trusted SSL certificates.
-
-## Add a new service
-
-### In this repo
-
-Add a new hostname in the `.env` file and restart services.
+To smoke test against a server, bring up a Docker container. TODO: Switch to
+Vagrant once Vagrant and VirtualBox are fully supported on Apple Silicon Macs.
 
 ```sh
-make restart
+make server
 ```
 
-### In that service
+Set the `ENVIRONMENT` variable to `test` before running any commands.
 
-Add the following labels and `proxy` network to service:
-
-```yaml
-  myservice:
-    image: myimage
-    labels:
-      traefik.enable: true
-      traefik.http.routers.<ROUTER_KEY>.rule: Host(`${HOSTNAME:-}`)
-      traefik.http.routers.<ROUTER_KEY>.entrypoints: <ENTRYPOINT>
-    networks:
-      - tifa
+```sh
+export ENVIRONMENT=test  # default: production
 ```
 
-Each service needs to have a unique `ROUTER_KEY`.
 
-Currently supported entrypoints:
+## Next steps
 
-Entrypoint | Port
---- | ---
-web | 80
-websecure | 443
-mysql | 3306
-
-For `websecure` HTTPS connections, enable TLS.
-
-```yaml
-      traefik.http.routers.<ROUTER_KEY>.tls.certresolver: letsencrypt
-```
-
-Finally, define the external network at the top level.
-
-```yaml
-networks:
-  proxy:
-    external: true
-```
+See the [service](https://github.com/tifa/service) repo for setting up CI/CD for
+other repositories.

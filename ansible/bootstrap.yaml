@@ -1,0 +1,284 @@
+---
+- name: Bootstrap
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+
+    - name: Environment
+      debug:
+        msg: Running against the {{ lookup('env', 'ENVIRONMENT') }} server
+
+    # ----------------------------------------
+    # Authentication method
+    #   Output: auth_by_password
+
+    - name: Authentication method
+      pause:
+        prompt:
+          Authenticate using `key` or `pass` (password) for the initial setup?
+          (enter for `key`)
+      register: auth_method_input
+
+    - name: Set authentication method
+      set_fact:
+        auth_method:
+          '{{ auth_method_input.user_input
+          if auth_method_input.user_input != "" else "key" }}'
+
+    - name: Set if authentication is by password
+      set_fact:
+        auth_by_password: '{{ auth_method == "pass" }}'
+
+    - name: Validate authentication method
+      fail:
+        msg: Authentication method must be `key` or `pass`
+      when: auth_method not in ['key', 'pass']
+
+    # ----------------------------------------
+    # SSH: hostname
+    #   Output: hostname
+
+    - name: Hostname
+      pause:
+        prompt: Hostname of the instance
+      register: hostname_input
+
+    - name: Set hostname
+      set_fact:
+        ansible_host: '{{ hostname_input.user_input }}'
+
+    # ----------------------------------------
+    # SSH: root username
+    #   Output: ansible_user
+
+    - name: Existing SSH username
+      pause:
+        prompt: Existing root username of the instance (enter for `root`)
+      register: ssh_username_input
+
+    - name: Set SSH username
+      set_fact:
+        ansible_user:
+          '{{ ssh_username_input.user_input
+          if ssh_username_input.user_input != "" else "root" }}'
+
+    # ----------------------------------------
+    # SSH: root password or key
+    #   Output: ansible_password or ansible_ssh_private_key_file
+
+    - name: Existing SSH password for `{{ ansible_user }}`
+      pause:
+        prompt: Existing root password of the instance
+        echo: false
+      register: ssh_password_input
+      when: auth_by_password
+
+    - name: Set SSH password for `{{ ansible_user }}`
+      set_fact:
+        ansible_password: '{{ ssh_password_input.user_input }}'
+      when: auth_by_password
+
+    - name: SSH private key path
+      pause:
+        prompt: Path to the private key to SSH as `{{ ansible_user }}`
+      register: ssh_priv_key_input
+      when: not auth_by_password
+
+    - name: Set SSH private key path
+      set_fact:
+        ansible_ssh_private_key_file: '{{ ssh_priv_key_input.user_input }}'
+      when: not auth_by_password
+
+    # ----------------------------------------
+    # SSH: existing port
+    #   Output: ansible_port
+
+    - name: Existing SSH port
+      pause:
+        prompt: Existing SSH port for the instance (enter for `22`)
+      register: ssh_port_input
+
+    - name: Set existing SSH port
+      set_fact:
+        ansible_port:
+          '{{ ssh_port_input.user_input
+          if ssh_port_input.user_input != "" else "22" | int }}'
+
+    # ----------------------------------------
+    # SSH: new user
+    #   Output: admin_user
+
+    - name: New admin username
+      pause:
+        prompt: New admin username for the instance
+      register: admin_user_input
+
+    - name: Set new admin username
+      set_fact:
+        admin_user: '{{ admin_user_input.user_input }}'
+
+    # ----------------------------------------
+    # Add new host
+
+    - name: Add new host to inventory
+      add_host:
+        name: server
+        ansible_host: '{{ ansible_host }}'
+        ansible_user: '{{ ansible_user }}'
+        ansible_port: '{{ ansible_port}}'
+        ansible_password: '{{ ansible_password }}'
+      when: auth_by_password
+      no_log: true
+
+    - name: Add new host to inventory
+      add_host:
+        name: server
+        ansible_host: '{{ ansible_host }}'
+        ansible_user: '{{ ansible_user }}'
+        ansible_port: '{{ ansible_port}}'
+        ansible_ssh_private_key_file: '{{ ansible_ssh_private_key_file }}'
+      when: not auth_by_password
+
+- hosts: server
+  become: true
+
+  vars:
+    admin_user: '{{ hostvars["localhost"].admin_user }}'
+    ansible_user: '{{ hostvars["localhost"].ansible_user }}'
+
+  vars_prompt:
+
+    # ----------------------------------------
+    # New root & user passwords
+    #   Output: password, root_password
+
+    - name: password
+      prompt: New password for `{{ admin_user }}`
+      private: true
+      encrypt: sha512_crypt
+      confirm: true
+
+    - name: root_password
+      prompt: New password for `{{ ansible_user }}`
+      private: true
+      encrypt: sha512_crypt
+      confirm: true
+
+  tasks:
+
+    # ----------------------------------------
+    # SSH: new port
+    #   Output: ssh_port
+
+    - name: New SSH port
+      pause:
+        prompt: New SSH port for the instance
+      register: ssh_port_input
+
+    - name: Set new SSH port
+      set_fact:
+        ssh_port: '{{ ssh_port_input.user_input | int }}'
+
+    # ----------------------------------------
+    # SSH: new public key
+    #   Output: ssh_pub_key
+
+    - name: SSH public key
+      pause:
+        prompt: Path to the public key to install for `{{ admin_user }}`
+      register: ssh_pub_key_input
+
+    - name: Set SSH public key
+      set_fact:
+        ssh_pub_key: '{{ ssh_pub_key_input.user_input }}'
+
+    # ----------------------------------------
+    # New user
+
+    - name: Create new user `{{ admin_user }}`
+      user:
+        name: '{{ admin_user }}'
+        shell: /bin/bash
+        createhome: true
+        home: '/home/{{ admin_user }}'
+        password: '{{ password }}'
+        groups: sudo
+        append: true
+        state: present
+
+    - name: Add `{{ admin_user }}` to sudoers
+      lineinfile:
+        dest: /etc/sudoers
+        line: '{{ admin_user }} ALL=(ALL) NOPASSWD: ALL'
+        validate: /usr/sbin/visudo -cf %s
+        state: present
+        mode: '0440'
+        create: true
+        backup: true
+
+    - name: Set authorized key for `{{ admin_user }}`
+      authorized_key:
+        user: '{{ admin_user }}'
+        state: present
+        key: '{{ lookup("file", ssh_pub_key) }}'
+
+    # ----------------------------------------
+    # Change root password
+
+    - name: Change password for `{{ ansible_user }}`
+      user:
+        name: '{{ ansible_user }}'
+        password: '{{ root_password }}'
+        update_password: always
+
+    # ----------------------------------------
+    # SSH configs
+
+    - name: Set SSH configs
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^\s*#?\s*{{ item.key }}\s+[^\s]+'
+        line: '{{ item.key }} {{ item.value }}'
+        validate: /usr/sbin/sshd -t -f %s
+        state: present
+        backup: true
+      with_items:
+        - {key: 'PasswordAuthentication', value: 'no'}
+        - {key: 'PermitRootLogin', value: 'no'}
+        - {key: 'Port', value: '{{ ssh_port }}'}
+        - {key: 'PubkeyAuthentication', value: 'yes'}
+
+    - name: Install firewalld
+      apt:
+        name: firewalld
+        state: latest
+
+    - name: Start firewalld
+      service:
+        name: firewalld
+        state: started
+        enabled: true
+
+    - name: Allow SSH on port `{{ ssh_port }}`
+      firewalld:
+        port: '{{ ssh_port }}/tcp'
+        permanent: true
+        state: enabled
+
+    - name: Disable default SSH
+      firewalld:
+        service: ssh
+        permanent: true
+        state: disabled
+
+    - name: Restart sshd and reload firewalld
+      shell: firewall-cmd --reload && service sshd restart
+
+    - name: Add this to your ~/.ssh/config
+      debug:
+        msg:
+          - 'Host <HOST>'
+          - '  HostName {{ ansible_host }}'
+          - '  User {{ admin_user }}'
+          - '  Port {{ ssh_port }}'

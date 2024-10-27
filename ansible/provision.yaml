@@ -1,0 +1,43 @@
+---
+- name: Provision
+  hosts: localhost
+  gather_facts: false
+
+  vars_prompt:
+
+    - name: ansible_host
+      prompt: Host as defined in SSH configs
+      private: false
+
+  tasks:
+
+    - name: Add new host to inventory
+      add_host:
+        name: server
+        ansible_host: '{{ ansible_host }}'
+
+- hosts: server
+  become: true
+
+  tasks:
+    - name: Install GPG
+      apt:
+        name: gnupg
+        state: latest
+        update_cache: true
+
+    - name: Add Docker GPG apt key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add Docker repository
+      apt_repository:
+        repo: deb https://download.docker.com/linux/ubuntu focal stable
+        state: present
+
+    - name: Install docker-ce
+      apt:
+        name: docker-ce
+        state: latest
+        update_cache: true

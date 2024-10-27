@@ -1,89 +1,67 @@
-.DEFAULT_GOAL := provision
+.DEFAULT_GOAL := help
 
-include .env
+ACTIVATE = . venv/bin/activate &&
+ANSIBLE = $(ACTIVATE) ansible-playbook -i ./ansible/inventory.yaml
+ENVIRONMENT ?= production
+COMPOSE = docker compose
 
-ACTIVATE = . venv/bin/activate;
-ASSETS = $(shell find assets -type f -name '*')
-ANSIBLE = $(ACTIVATE) \
-			VPS_ALIAS=$(VPS_ALIAS) \
-			VPS_IP=$(VPS_IP) \
-			VPS_USER=$(VPS_USER) \
-			ansible-playbook -i vps/inventory/inventory.py
-PROJECT_NAME = tifa
+define usage
+	@printf "\nUsage: make <command>\n"
+	@grep -F -h "##" $(MAKEFILE_LIST) | grep -F -v grep -F | sed -e 's/\\$$//' | awk 'BEGIN {FS = ":*[[:alnum:] _]*##[[:space:]]*"}; \
+	{ \
+		if($$2 == "") \
+			pass; \
+		else if($$0 ~ /^#/) \
+			printf "\n%s\n", $$2; \
+		else if($$1 == "") \
+			printf "     %-20s%s\n", "", $$2; \
+		else \
+			printf "\n    \033[1;33m%-20s\033[0m %s\n", $$1, $$2; \
+	}'
+endef
 
-.git/hooks/pre-commit:
-	$(ACTIVATE) pre-commit install
+.git/hooks/pre-commit .git/hooks/pre-push: .pre-commit-config.yaml
+	$(ACTIVATE) pre-commit install --hook-type pre-commit --hook-type pre-push
 	@touch $@
 
 venv: venv/.touchfile .git/hooks/pre-commit
 venv/.touchfile: requirements.txt
-	test -d venv || virtualenv venv
-	$(ACTIVATE) pip install -Ur requirements.txt
+	@test -d venv || python3 -m venv venv
+	@$(ACTIVATE) pip install -U uv && uv pip install -Ur requirements.txt
 	@touch $@
+
+.PHONY: help
+help: ## Show this message
+	$(usage)
 
 .PHONY: check
-check: venv
-	@$(ACTIVATE) pre-commit run --all
-	@$(ACTIVATE) pre-commit run --hook-stage push
+check: venv  ## Run pre-commit checks
+	@$(ACTIVATE) pre-commit run --all-files
 
-.PHONY: bootstrap
-bootstrap: venv
-	@$(ANSIBLE) vps/bootstrap.yaml --ask-pass \
-		-e "vps_alias=$(VPS_ALIAS)" \
-		-e "vps_ip=$(VPS_IP)" \
-		-e "vps_user=$(VPS_USER)" \
-		-e "vps_key_file=$(VPS_KEY_FILE)"
+.PHONY: up
+up:  ## Start the local server
+	@$(COMPOSE) up --detach --build
 
-.PHONY: provision
-provision: venv
-	@$(ANSIBLE) vps/provision.yaml
-
-build: venv/.build_touchfile
-venv/.build_touchfile: Dockerfile $(ASSETS)
-	@docker build -t proxy .
-	@touch $@
-
-.PHONY: start
-start: cert build network
-	@docker compose --project-name $(PROJECT_NAME) up --detach
-
-.PHONY: stop
-stop:
-	@docker compose --project-name $(PROJECT_NAME) down --remove-orphans
-	@$(MAKE) network-stop
+.PHONY: down
+down:  ## Stop the local server
+	@$(COMPOSE) down --remove-orphans --volumes
 
 .PHONY: restart
-restart: stop start
+restart: down up  ## Restart the local server
 
-.PHONY: cert
-cert: cert-$(ENVIRONMENT)
+.PHONY: sh
+sh:  ## Open a shell in the local server container
+	@$(COMPOSE) exec server bash
 
-.PHONY: cert-prod
-cert-prod:
+.PHONY: bootstrap
+bootstrap: venv  ## Bootstrap the server
+	@$(ANSIBLE) ./ansible/bootstrap.yaml -vv
 
-.PHONY: cert-dev
-cert-dev:
-	$(eval CERT_HOSTNAMES=$(shell echo $(CERT_HOSTNAMES) | awk 'BEGIN{OFS=", "; RS=","; prefix="DNS:"} {$$1=prefix $$1} {printf("%s%s", NR==1 ? "" : OFS, $$1)} END {printf("\n")}'))
-	@HOSTNAME="$(HOSTNAME)" \
-		CERT_HOSTNAMES="$(CERT_HOSTNAMES)" \
-		envsubst < ./assets/traefik/dev/certs/dev.ext > ./assets/traefik/dev/certs/dev.ext.tmp; \
-	docker run --rm -it -v ./assets/traefik/dev/certs/:/etc/traefik/certs/ \
-		-w /etc/traefik/certs/ \
-		alpine/openssl req \
-			-newkey rsa:2048 -x509 -nodes -new -sha256 -days 365 \
-    		-keyout "dev.key" -out "dev.crt" -subj "/CN=$(HOSTNAME)" \
-    		-reqexts req_ext -extensions req_ext -config dev.ext.tmp
-	@[ "$(shell uname -s)" != "Darwin" ] || sudo security delete-certificate -c "$(HOSTNAME)" /Library/Keychains/System.keychain
-	@[ "$(shell uname -s)" != "Darwin" ] || sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ./assets/traefik/dev/certs/dev.crt
-
-.PHONY: network
-network:
-	@docker network create $(PROJECT_NAME) || true
-
-.PHONY: network-stop
-network-stop:
-	@docker network rm $(PROJECT_NAME) || true
+.PHONY: provision
+provision: venv  ## Provision the server
+	@$(ANSIBLE) ./ansible/provision.yaml
 
 .PHONY: clean
-clean:
+clean:  ## Clean the environment
 	@git clean -Xdf
+	@rm -rf venv

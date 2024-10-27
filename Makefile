@@ -20,8 +20,8 @@ define usage
 	}'
 endef
 
-.git/hooks/pre-commit .git/hooks/pre-push: .pre-commit-config.yaml
-	$(ACTIVATE) pre-commit install --hook-type pre-commit --hook-type pre-push
+.git/hooks/pre-commit: .pre-commit-config.yaml
+	$(ACTIVATE) pre-commit install --hook-type pre-commit
 	@touch $@
 
 venv: venv/.touchfile .git/hooks/pre-commit
@@ -60,6 +60,10 @@ bootstrap: venv  ## Bootstrap the server
 .PHONY: provision
 provision: venv  ## Provision the server
 	@$(ANSIBLE) ./ansible/provision.yaml
+
+.PHONY: git
+git: venv  ## Set up automated git deployment for a repo
+	@$(ANSIBLE) ./ansible/git.yaml
 
 .PHONY: clean
 clean:  ## Clean the environment

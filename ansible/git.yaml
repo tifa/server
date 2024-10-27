@@ -1,0 +1,30 @@
+---
+- name: Git
+  hosts: localhost
+  gather_facts: false
+
+  roles:
+    - server
+
+- hosts: server
+
+  vars_prompt:
+
+    - name: repo
+      prompt: Name of the repository to install
+      private: false
+
+    - name: ssh_pub_key
+      prompt: Path to the public key to install
+      private: false
+
+  roles:
+    - git
+
+  tasks:
+
+    - name: Add to authorized keys
+      authorized_key:
+        user: '{{ ansible_user }}'
+        state: present
+        key: '{{ lookup("file", ssh_pub_key) }}'

@@ -8,7 +8,7 @@ Set up a new instance.
 Create an SSH key pair and it to the SSH authentication agent.
 
 ```sh
-ssh-keygen -t ed25519 -C "email@example.com"
+ssh-keygen -t ed25519 -C laptop
 ssh-add ~/.ssh/path/to/key
 ```
 
@@ -59,7 +59,23 @@ export ENVIRONMENT=test  # default: production
 ```
 
 
-## Next steps
+## Automated deployment
 
-See the [service](https://github.com/tifa/service) repo for setting up CI/CD for
-other repositories.
+Automate deployment of projects to the remote instance via a bare git
+repository.
+
+Create a new key pair without a passphrase.
+
+```sh
+ssh-keygen -t ed25519 -C github
+```
+
+Run the interactive setup. This creates a bare git repository at
+`/srv/git/<REPO>` with a working tree at `/srv/www/<REPO>`.
+
+```sh
+make git
+```
+
+Then add a Github Actions workflow for deployment. See example at
+[./examples/deploy.yaml].

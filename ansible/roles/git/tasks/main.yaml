@@ -1,0 +1,23 @@
+---
+- name: Create directories
+  file:
+    path: '{{ item }}'
+    state: directory
+    owner: '{{ ansible_user }}'
+    group: '{{ ansible_user }}'
+  become: true
+  with_items:
+    - /srv/www
+    - /srv/www/{{ repo }}
+    - /srv/git
+
+- name: Create bare repo
+  command: git init --bare /srv/git/{{ repo }}.git
+  args:
+    creates: /srv/git/{{ repo }}.git
+
+- name: Create post-receive hook
+  template:
+    src: post-receive.j2
+    dest: /srv/git/{{ repo }}.git/hooks/post-receive
+    mode: 0755

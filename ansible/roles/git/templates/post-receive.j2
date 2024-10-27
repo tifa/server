@@ -1,0 +1,8 @@
+#!/bin/bash
+
+while read oldrev newrev ref; do
+    if [[ $ref =~ .*/main$ ]]; then
+        echo "Main ref received. Deploying main branch to production..."
+        git --work-tree=/srv/www/{{ repo }} --git-dir=/srv/git/{{ repo }}.git checkout -f main
+    fi
+done

@@ -1,0 +1,16 @@
+---
+- name: Host
+  pause:
+    prompt: Host to connect to, as defined in SSH configs
+  register: host_input
+
+- name: User
+  command: whoami
+  register: whoami
+  changed_when: false
+
+- name: Add new host to inventory
+  add_host:
+    name: server
+    ansible_host: '{{ host_input.user_input }}'
+    ansible_user: '{{ whoami.stdout }}'

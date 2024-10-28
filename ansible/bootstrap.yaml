@@ -5,10 +5,6 @@
 
   tasks:
 
-    - name: Environment
-      debug:
-        msg: Running against the {{ lookup('env', 'ENVIRONMENT') }} server
-
     # ----------------------------------------
     # Authentication method
     #   Output: auth_by_password

@@ -2,8 +2,10 @@
 
 ACTIVATE = . venv/bin/activate &&
 ANSIBLE = $(ACTIVATE) ansible-playbook -i ./ansible/inventory.yaml
-ENVIRONMENT ?= production
 COMPOSE = docker compose
+
+include .env
+export
 
 define usage
 	@printf "\nUsage: make <command>\n"
@@ -67,5 +69,4 @@ git: venv  ## Set up automated git deployment for a repo
 
 .PHONY: clean
 clean:  ## Clean the environment
-	@git clean -Xdf
 	@rm -rf venv

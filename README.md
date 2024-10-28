@@ -3,6 +3,15 @@
 Set up a new instance.
 
 
+## Configuration
+
+Copy the `.env` template and configure the application.
+
+```sh
+cp .env.template .env
+```
+
+
 ## One-time bootstrap
 
 Create an SSH key pair and it to the SSH authentication agent.
@@ -41,22 +50,6 @@ make provision
 ```
 
 - Install Docker
-
-
-## Development
-
-To smoke test against a server, bring up a Docker container. TODO: Switch to
-Vagrant once Vagrant and VirtualBox are fully supported on Apple Silicon Macs.
-
-```sh
-make server
-```
-
-Set the `ENVIRONMENT` variable to `test` before running any commands.
-
-```sh
-export ENVIRONMENT=test  # default: production
-```
 
 
 ## Automated deployment

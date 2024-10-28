@@ -6,7 +6,9 @@ services:
     build:
       context: .
     container_name: server
-    hostname: ${HOSTNAME:?}
+    hostname: server
+    env_file:
+      - .env
     labels:
       ansible: true
     restart: always

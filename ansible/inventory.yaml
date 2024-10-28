@@ -3,13 +3,11 @@ all:
   hosts:
 
     bootstrap:
-      ansible_connection:
-        '{{ "docker" if lookup("env", "ENVIRONMENT") == "test" else "ssh" }}'
+      ansible_connection: '{{ lookup("env", "ANSIBLE_CONNECTION") }}'
       ansible_ssh_common_args:
         '-o StrictHostKeyChecking=no'
 
     server:
-      ansible_connection:
-        '{{ "docker" if lookup("env", "ENVIRONMENT") == "test" else "ssh" }}'
+      ansible_connection: '{{ lookup("env", "ANSIBLE_CONNECTION") }}'
       ansible_ssh_common_args:
         '-o StrictHostKeyChecking=no -F {{ lookup("env", "HOME") }}/.ssh/config'

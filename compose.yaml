@@ -6,7 +6,6 @@ services:
     build:
       context: .
     container_name: server
-    hostname: server
     env_file:
       - .env
     labels:

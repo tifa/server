@@ -4,17 +4,23 @@
   gather_facts: false
 
   roles:
-    - server
+    - config
+
+- import_playbook: server.yaml
 
 - hosts: server
   become: true
 
   tasks:
-    - name: Install GPG
+    - name: Install packages
       apt:
-        name: gnupg
+        name: '{{ item}}'
         state: latest
         update_cache: true
+      with_items:
+        - gnupg
+        - make
+        - python3-venv
 
     - name: Add Docker GPG apt key
       apt_key:

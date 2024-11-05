@@ -1,0 +1,11 @@
+---
+- name: Check environment variables
+  fail:
+    msg: 'Environment variable {{ item }} must be set'
+  when: lookup('env', item) == ''
+  loop:
+    - ANSIBLE_CONNECTION
+
+- name: Register environment variables
+  set_fact:
+    ansible_connection: '{{ lookup("env", "ANSIBLE_CONNECTION") }}'

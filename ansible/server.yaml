@@ -1,0 +1,37 @@
+---
+- name: Server
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Host
+      pause:
+        prompt: '{{
+          "Host to connect to, as defined in SSH configs"
+          if ansible_connection == "ssh"
+          else "Container to connect to"
+        }}'
+      register: host_input
+
+    - name: Add host to inventory
+      add_host:
+        name: server
+        ansible_host: '{{ host_input.user_input }}'
+
+- hosts: server
+
+  tasks:
+    - name: User
+      command: whoami
+      register: whoami
+      changed_when: false
+
+- hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Add new host to inventory
+      add_host:
+        name: server
+        ansible_host: '{{ host_input.user_input }}'
+        ansible_user: '{{ hostvars["server"].whoami.stdout }}'

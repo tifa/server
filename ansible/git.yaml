@@ -4,7 +4,9 @@
   gather_facts: false
 
   roles:
-    - server
+    - config
+
+- import_playbook: server.yaml
 
 - hosts: server
 

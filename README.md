@@ -60,7 +60,7 @@ repository.
 Create a new key pair without a passphrase.
 
 ```sh
-ssh-keygen -t ed25519 -C github
+ssh-keygen -t ed25519 -C github -N ""
 ```
 
 Run the interactive setup. This creates a bare git repository at

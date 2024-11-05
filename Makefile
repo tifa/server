@@ -57,7 +57,7 @@ sh:  ## Open a shell in the local server container
 
 .PHONY: bootstrap
 bootstrap: venv  ## Bootstrap the server
-	@$(ANSIBLE) ./ansible/bootstrap.yaml -vv
+	@$(ANSIBLE) ./ansible/bootstrap.yaml
 
 .PHONY: provision
 provision: venv  ## Provision the server

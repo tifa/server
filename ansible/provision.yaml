@@ -37,3 +37,15 @@
         name: docker-ce
         state: latest
         update_cache: true
+
+    - name: Add user to Docker group
+      user:
+        name: '{{ ansible_user }}'
+        groups: docker
+        append: true
+
+    - name: Socket file group
+      file:
+        path: /var/run/docker.sock
+        group: docker
+        state: file

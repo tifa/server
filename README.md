@@ -71,4 +71,11 @@ make git
 ```
 
 Then add a Github Actions workflow for deployment. See example at
-[./examples/deploy.yaml](./examples/deploy.yaml).
+[./examples/deploy.yaml](./examples/deploy.yaml). The following secrets will need to be created in the repo:
+
+| Secret | Description |
+| --- | --- |
+| `SSH_PRIVATE_KEY` | Contents of the SSH private key |
+| `REMOTE_HOST` | DNS name or IP address of the remote host |
+| `REMOTE_USER` | SSH user |
+| `REMOTE_PORt` | SSH port |

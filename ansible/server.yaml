@@ -19,7 +19,6 @@
         ansible_host: '{{ host_input.user_input }}'
 
 - hosts: server
-
   tasks:
     - name: User
       command: whoami

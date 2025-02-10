@@ -52,10 +52,9 @@ make provision
 - Install Docker
 
 
-## Automated deployment
+## Remote repositories
 
-Automate deployment of projects to the remote instance via a bare git
-repository.
+Deploy projects to the remote instance via a bare git repository.
 
 Create a new key pair without a passphrase.
 
@@ -70,6 +69,8 @@ Run the interactive setup. This creates a bare git repository at
 make git
 ```
 
+### Deploy from GitHub
+
 Then add a Github Actions workflow for deployment. See example at
 [./examples/deploy.yaml](./examples/deploy.yaml). The following secrets will need to be created in the repo:
 
@@ -78,4 +79,13 @@ Then add a Github Actions workflow for deployment. See example at
 | `SSH_PRIVATE_KEY` | Contents of the SSH private key |
 | `REMOTE_HOST` | DNS name or IP address of the remote host |
 | `REMOTE_USER` | SSH user |
-| `REMOTE_PORt` | SSH port |
+| `REMOTE_PORT` | SSH port |
+
+
+### Deploy from local
+
+Add to git remotes:
+
+```sh
+git remote add <REPO_NAME> ssh://<REMOTE_USER>@<REMOTE_HOST>:<REMOTE_PORT>>/srv/git/<REPO_NAME>.git
+```
